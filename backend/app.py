@@ -120,7 +120,7 @@ def home():
     try:
 
         result = subprocess.run(
-            [sys.executable, "backend/scanner.py"],
+            [sys.executable, "scanner.py"],
             capture_output=True,
             text=True
         )
@@ -129,7 +129,7 @@ def home():
 
     except Exception as e:
 
-        output = f"ERROR {e}"
+        output = f"ERROR: {e}"
 
     best = "No Strong Signal"
     best_conf = -1
@@ -159,11 +159,14 @@ def home():
             resistance = parts[10].replace("Resistance:", "").strip()
             expiry = parts[11].replace("Expiry:", "").strip()
 
-            conf_num = int(confidence.replace("%", ""))
+            try:
+                conf_num = int(confidence.replace("%", ""))
+            except:
+                conf_num = 0
 
             if signal != "WAIT" and conf_num > best_conf:
                 best_conf = conf_num
-                best = f"{pair} | {signal} | {confidence}"
+                best = f"{pair} | {signal} | {confidence} | Entry {entry}"
 
             rows.append({
                 "pair": pair,
