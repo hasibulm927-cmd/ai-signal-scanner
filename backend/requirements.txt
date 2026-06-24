@@ -1,1 +1,7 @@
 
+flask
+requests
+pandas
+ta
+pytz
+gunicorn
