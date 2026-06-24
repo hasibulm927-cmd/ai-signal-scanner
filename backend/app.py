@@ -1,5 +1,6 @@
 from flask import Flask, render_template_string
 import subprocess
+import sys
 
 app = Flask(__name__)
 
@@ -8,60 +9,57 @@ HTML = """
 <html>
 <head>
 <title>AI Signal Scanner</title>
-
 <meta http-equiv="refresh" content="15">
 
 <style>
-
 body{
-    background:#111;
-    color:white;
-    font-family:Arial;
-    padding:20px;
+background:#111;
+color:white;
+font-family:Arial;
+padding:20px;
 }
 
 h1{
-    color:#00ff99;
-}
-
-table{
-    width:100%;
-    border-collapse:collapse;
-    font-size:14px;
-}
-
-th,td{
-    border:1px solid #333;
-    padding:8px;
-    text-align:center;
-}
-
-th{
-    background:#222;
-}
-
-.buy{
-    color:lime;
-    font-weight:bold;
-}
-
-.sell{
-    color:red;
-    font-weight:bold;
-}
-
-.wait{
-    color:orange;
-    font-weight:bold;
+color:#00ff99;
 }
 
 .best{
-    background:#222;
-    padding:15px;
-    margin-bottom:20px;
-    border:2px solid #00ff99;
+background:#222;
+padding:15px;
+margin-bottom:20px;
+border:2px solid #00ff99;
 }
 
+table{
+width:100%;
+border-collapse:collapse;
+font-size:14px;
+}
+
+th,td{
+border:1px solid #333;
+padding:8px;
+text-align:center;
+}
+
+th{
+background:#222;
+}
+
+.buy{
+color:lime;
+font-weight:bold;
+}
+
+.sell{
+color:red;
+font-weight:bold;
+}
+
+.wait{
+color:orange;
+font-weight:bold;
+}
 </style>
 </head>
 
@@ -93,13 +91,8 @@ th{
 
 {% for row in rows %}
 <tr>
-
 <td>{{ row.pair }}</td>
-
-<td class="{{ row.signal.lower() }}">
-{{ row.signal }}
-</td>
-
+<td class="{{ row.signal.lower() }}">{{ row.signal }}</td>
 <td>{{ row.rsi }}</td>
 <td>{{ row.pattern }}</td>
 <td>{{ row.confidence }}</td>
@@ -110,7 +103,6 @@ th{
 <td>{{ row.support }}</td>
 <td>{{ row.resistance }}</td>
 <td>{{ row.expiry }}</td>
-
 </tr>
 {% endfor %}
 
@@ -123,9 +115,21 @@ th{
 @app.route("/")
 def home():
 
-    output = subprocess.getoutput("python backend\\scanner.py")
-
     rows = []
+
+    try:
+
+        result = subprocess.run(
+            [sys.executable, "backend/scanner.py"],
+            capture_output=True,
+            text=True
+        )
+
+        output = result.stdout
+
+    except Exception as e:
+
+        output = f"ERROR {e}"
 
     best = "No Strong Signal"
     best_conf = -1
@@ -140,43 +144,44 @@ def home():
         if len(parts) < 12:
             continue
 
-        pair = parts[0]
-
-        signal = parts[1].replace("Signal:", "").strip()
-        rsi = parts[2].replace("RSI:", "").strip()
-        pattern = parts[3].replace("Pattern:", "").strip()
-        confidence = parts[4].replace("Confidence:", "").strip()
-        strength = parts[5].replace("Strength:", "").strip()
-        entry = parts[6].replace("Entry:", "").strip()
-        countdown = parts[7].replace("Countdown:", "").strip()
-        volatility = parts[8].replace("Volatility:", "").strip()
-        support = parts[9].replace("Support:", "").strip()
-        resistance = parts[10].replace("Resistance:", "").strip()
-        expiry = parts[11].replace("Expiry:", "").strip()
-
         try:
+
+            pair = parts[0]
+            signal = parts[1].replace("Signal:", "").strip()
+            rsi = parts[2].replace("RSI:", "").strip()
+            pattern = parts[3].replace("Pattern:", "").strip()
+            confidence = parts[4].replace("Confidence:", "").strip()
+            strength = parts[5].replace("Strength:", "").strip()
+            entry = parts[6].replace("Entry:", "").strip()
+            countdown = parts[7].replace("Countdown:", "").strip()
+            volatility = parts[8].replace("Volatility:", "").strip()
+            support = parts[9].replace("Support:", "").strip()
+            resistance = parts[10].replace("Resistance:", "").strip()
+            expiry = parts[11].replace("Expiry:", "").strip()
+
             conf_num = int(confidence.replace("%", ""))
+
+            if signal != "WAIT" and conf_num > best_conf:
+                best_conf = conf_num
+                best = f"{pair} | {signal} | {confidence}"
+
+            rows.append({
+                "pair": pair,
+                "signal": signal,
+                "rsi": rsi,
+                "pattern": pattern,
+                "confidence": confidence,
+                "strength": strength,
+                "entry": entry,
+                "countdown": countdown,
+                "volatility": volatility,
+                "support": support,
+                "resistance": resistance,
+                "expiry": expiry
+            })
+
         except:
-            conf_num = 0
-
-        if signal != "WAIT" and conf_num > best_conf:
-            best_conf = conf_num
-            best = f"{pair} | {signal} | {confidence} | Entry {entry}"
-
-        rows.append({
-            "pair": pair,
-            "signal": signal,
-            "rsi": rsi,
-            "pattern": pattern,
-            "confidence": confidence,
-            "strength": strength,
-            "entry": entry,
-            "countdown": countdown,
-            "volatility": volatility,
-            "support": support,
-            "resistance": resistance,
-            "expiry": expiry
-        })
+            pass
 
     return render_template_string(
         HTML,
@@ -185,4 +190,4 @@ def home():
     )
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=10000)
